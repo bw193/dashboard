@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>LED Mirror B2B · Sales Intelligence</title>
+<title>外贸部销售数据看板</title>
 <script src="sales-data.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
-:root{--bg:#0d1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;--accent:#58a6ff;--g2:#3fb950;--g3:#f78166;--g4:#d2a8ff;--g5:#ffa657;--text:#e6edf3;--muted:#8b949e;--r:12px}
+:root,html[data-theme="dark"]{--bg:#0d1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;--accent:#2563eb;--g2:#16a34a;--g3:#dc2626;--g4:#9333ea;--g5:#ea580c;--text:#e6edf3;--muted:#8b949e;--r:12px;--chart-grid:#30363d;--chart-text:#8b949e;--chart-tooltip-bg:#21262d;--chart-tooltip-border:#30363d;--chart-tooltip-title:#e6edf3;--chart-tooltip-body:#8b949e;--chart-canvas-bg:#161b22}
+html[data-theme="light"]{--bg:#f8fafc;--surface:#ffffff;--surface2:#f1f5f9;--border:#e2e8f0;--accent:#2563eb;--g2:#16a34a;--g3:#dc2626;--g4:#9333ea;--g5:#ea580c;--text:#0f172a;--muted:#64748b;--chart-grid:#e2e8f0;--chart-text:#64748b;--chart-tooltip-bg:#ffffff;--chart-tooltip-border:#e2e8f0;--chart-tooltip-title:#0f172a;--chart-tooltip-body:#64748b;--chart-canvas-bg:#ffffff}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px}
 a{color:inherit;text-decoration:none}
@@ -62,6 +63,9 @@ main{padding:22px;max-width:1600px;margin:0 auto}
 .card-title{font-size:14px;font-weight:600}
 .card-sub{font-size:12px;color:var(--muted);margin-top:2px}
 .cw{position:relative}
+.dl-btn{background:none;border:1px solid var(--border);color:var(--muted);width:26px;height:26px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;font-size:13px;padding:0;line-height:1}
+.dl-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--muted)}
+.dl-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* table */
 .tw{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:14px}
@@ -130,9 +134,10 @@ td{padding:9px 14px;font-size:13px}
 </div>
 
 <header>
-  <div class="logo"><div class="logo-icon">🪞</div>LED Mirror B2B · Sales Intelligence</div>
+  <div class="logo"><div class="logo-icon">🪞</div>外贸部销售数据看板</div>
   <div style="display:flex;align-items:center;gap:12px">
     <span class="last-updated" id="lastUpdated"></span>
+    <button class="btn" id="themeBtn" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
     <button class="btn" id="langBtn" onclick="toggleLang()">中文</button>
     <button class="btn btn-primary" onclick="location.reload()">⟳ Refresh</button>
   </div>
@@ -300,6 +305,36 @@ td{padding:9px 14px;font-size:13px}
     </div>
     <div class="cw" style="height:230px"><canvas id="chartAvgOrder"></canvas></div>
   </div>
+
+  <!-- Seasonality + Day of Week -->
+  <div class="grid2">
+    <div class="card">
+      <div class="card-hd"><div><div class="card-title" data-t="seasonTitle">Seasonality Pattern</div><div class="card-sub" data-t="seasonSub">Average USD revenue by calendar month across all years</div></div></div>
+      <div class="cw" style="height:250px"><canvas id="chartSeason"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><div><div class="card-title" data-t="dowTitle">Revenue by Day of Week</div><div class="card-sub" data-t="dowSub">Total USD by weekday</div></div></div>
+      <div class="cw" style="height:250px"><canvas id="chartDow"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Top Biggest Orders -->
+  <div class="tw">
+    <div class="tw-hd">
+      <div class="tw-hd-title" data-t="bigOrdersTitle">Top 20 Largest Orders</div>
+      <span style="color:var(--muted);font-size:12px" data-t="bigOrdersSub">Sorted by USD amount</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>#</th><th data-t="orderColDate">Date</th><th data-t="orderColSp">Salesperson</th>
+          <th data-t="orderColCn">Country</th><th data-t="orderColUSD">USD</th>
+          <th data-t="orderColCust">Customer</th><th data-t="orderColChan">Channel</th><th data-t="orderColStore">Store</th>
+        </tr></thead>
+        <tbody id="bigOrdersBody"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <!-- ══════════ PAGE: QUARTERLY ANALYSIS ══════════ -->
@@ -426,6 +461,22 @@ td{padding:9px 14px;font-size:13px}
     </div>
     <div class="hm-wrap" id="hmWrap"></div>
   </div>
+
+  <!-- Salesperson Monthly Performance Trend -->
+  <div class="card mb">
+    <div class="card-hd">
+      <div><div class="card-title" data-t="spTrendTitle">Salesperson Monthly Performance</div><div class="card-sub" data-t="spTrendSub">USD revenue trend per salesperson over time</div></div>
+    </div>
+    <div class="cw" style="height:320px"><canvas id="chartSpTrend"></canvas></div>
+  </div>
+
+  <!-- Salesperson Win Rate Trend -->
+  <div class="card mb">
+    <div class="card-hd">
+      <div><div class="card-title" data-t="winRateTitle">New Customer Acquisition Rate</div><div class="card-sub" data-t="winRateSub">Monthly new customer % per salesperson</div></div>
+    </div>
+    <div class="cw" style="height:300px"><canvas id="chartWinRate"></canvas></div>
+  </div>
 </div>
 
 <!-- ══════════ PAGE: MARKET INTELLIGENCE ══════════ -->
@@ -468,6 +519,43 @@ td{padding:9px 14px;font-size:13px}
         <div><div class="card-title" data-t="cnOrdTitle">Countries by Order Count</div><div class="card-sub" data-t="cnOrdSub">Top 15</div></div>
       </div>
       <div id="cnOrderBars" style="padding-top:4px;max-height:320px;overflow-y:auto"></div>
+    </div>
+  </div>
+
+  <!-- Country YoY Growth -->
+  <div class="card mb">
+    <div class="card-hd">
+      <div><div class="card-title" data-t="cnYoyTitle">Country Year-over-Year Growth</div><div class="card-sub" data-t="cnYoySub">USD revenue change — countries active in both years</div></div>
+      <div class="tab-bar">
+        <div class="tab active" onclick="setCnYoyPeriod('2024-2025',this)">2024→2025</div>
+        <div class="tab" onclick="setCnYoyPeriod('2025-2026',this)">2025→2026</div>
+      </div>
+    </div>
+    <div class="cw" style="height:360px"><canvas id="chartCnYoy"></canvas></div>
+  </div>
+
+  <!-- New Markets Discovery -->
+  <div class="grid2">
+    <div class="card">
+      <div class="card-hd"><div><div class="card-title" data-t="newMktTitle">New Markets Discovered</div><div class="card-sub" data-t="newMktSub">Countries first reached each year</div></div></div>
+      <div class="cw" style="height:250px"><canvas id="chartNewMkt"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><div><div class="card-title" data-t="mktConcTitle">Market Concentration</div><div class="card-sub" data-t="mktConcSub">Revenue share of top N countries</div></div></div>
+      <div class="cw" style="height:250px"><canvas id="chartMktConc"></canvas></div>
+    </div>
+  </div>
+
+  <!-- New Markets Detail Table -->
+  <div class="tw">
+    <div class="tw-hd">
+      <div class="tw-hd-title" data-t="newMktTableTitle">New Markets Detail</div>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead id="newMktTableHead"></thead>
+        <tbody id="newMktTableBody"></tbody>
+      </table>
     </div>
   </div>
 
@@ -574,16 +662,20 @@ function renderAll() {
   } else if(active === 'page-growth') {
     renderCustTrend(); renderCumulative(); renderOrderDist();
     renderPareto(); renderSource(); renderAvgOrder();
+    renderSeason(); renderDow(); renderBigOrders();
   } else if(active === 'page-quarterly') {
     renderQtrKPIs(); renderQtrRev(); renderQoQ(); renderQtrYoY();
     renderQtrCust(); renderQtrChan(); renderQtrSp(); renderQtrTable();
   } else if(active === 'page-team') {
     renderSpTable(); renderSpRevChart(); renderSpCountries(); renderHeatmap();
+    renderSpTrend(); renderWinRate();
   } else if(active === 'page-market') {
     renderCnTable(); renderCnTop(); renderCnOrderBars();
+    renderCnYoy(); renderNewMkt(); renderMktConc(); renderNewMktTable();
   } else if(active === 'page-orders') {
     renderOrderTable();
   }
+  setTimeout(injectDownloadButtons, 50);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -597,16 +689,20 @@ function groupBy(arr, key, val) {
 }
 function dc(id) { if(CI[id]){CI[id].destroy();delete CI[id];} }
 
+// read CSS variable from current theme
+function tc(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
 function darkOpts({ yPfx='', indexAxis='x', spanGaps=false }={}) {
   const valAxis = indexAxis==='y' ? 'x' : 'y';
   const catAxis = indexAxis==='y' ? 'y' : 'x';
   const valTick = val=>(yPfx+(val>=1e6?(val/1e6).toFixed(1)+'M':val>=1000?(val/1000).toFixed(0)+'K':val));
+  const grid=tc('--chart-grid'), txt=tc('--chart-text'), ttBg=tc('--chart-tooltip-bg'), ttBd=tc('--chart-tooltip-border'), ttT=tc('--chart-tooltip-title'), ttB=tc('--chart-tooltip-body');
   return {
     responsive:true, maintainAspectRatio:false, spanGaps, indexAxis,
     interaction:{ mode:'index', intersect:false },
     plugins:{
-      legend:{ labels:{ color:'#8b949e', boxWidth:12, font:{size:12} } },
-      tooltip:{ backgroundColor:'#21262d', borderColor:'#30363d', borderWidth:1, titleColor:'#e6edf3', bodyColor:'#8b949e',
+      legend:{ labels:{ color:txt, boxWidth:12, font:{size:12} } },
+      tooltip:{ backgroundColor:ttBg, borderColor:ttBd, borderWidth:1, titleColor:ttT, bodyColor:ttB,
         callbacks:{ label: ctx=>{
           const raw = ctx.parsed[valAxis]??ctx.raw;
           if(raw==null) return null;
@@ -616,17 +712,18 @@ function darkOpts({ yPfx='', indexAxis='x', spanGaps=false }={}) {
       datalabels:{ display:false }
     },
     scales:{
-      [catAxis]:{ grid:{color:'#30363d'}, ticks:{color:'#8b949e',font:{size:11}} },
-      [valAxis]:{ grid:{color:'#30363d'}, ticks:{color:'#8b949e',font:{size:11}, callback: yPfx ? valTick : val=>val } }
+      [catAxis]:{ grid:{color:grid}, ticks:{color:txt,font:{size:11}} },
+      [valAxis]:{ grid:{color:grid}, ticks:{color:txt,font:{size:11}, callback: yPfx ? valTick : val=>val } }
     }
   };
 }
 function donutOpts() {
+  const txt=tc('--chart-text'), ttBg=tc('--chart-tooltip-bg'), ttBd=tc('--chart-tooltip-border'), ttT=tc('--chart-tooltip-title'), ttB=tc('--chart-tooltip-body');
   return {
     responsive:true, maintainAspectRatio:false, cutout:'62%',
     plugins:{
-      legend:{ position:'bottom', labels:{ color:'#8b949e', boxWidth:10, font:{size:11}, padding:8 } },
-      tooltip:{ backgroundColor:'#21262d', borderColor:'#30363d', borderWidth:1, titleColor:'#e6edf3', bodyColor:'#8b949e' },
+      legend:{ position:'bottom', labels:{ color:txt, boxWidth:10, font:{size:11}, padding:8 } },
+      tooltip:{ backgroundColor:ttBg, borderColor:ttBd, borderWidth:1, titleColor:ttT, bodyColor:ttB },
       datalabels:{ formatter:(val,ctx)=>{ const total=ctx.dataset.data.reduce((a,b)=>a+b,0); return total>0?Math.round(val/total*100)+'%':''; }, color:'#fff', font:{weight:'bold',size:11} }
     }
   };
@@ -820,7 +917,7 @@ function renderOrderDist() {
   dc('chartOrderDist');
   const opts = darkOpts({});
   opts.plugins.legend.display = false;
-  opts.plugins.datalabels = { anchor:'end', align:'top', color:'#8b949e', font:{size:11}, formatter:val=>val };
+  opts.plugins.datalabels = { anchor:'end', align:'top', color:tc('--chart-text'), font:{size:11}, formatter:val=>val };
   CI.chartOrderDist = new Chart(document.getElementById('chartOrderDist'),{
     type:'bar',
     data:{ labels:buckets.map(b=>b[0]), datasets:[{
@@ -855,17 +952,17 @@ function renderPareto() {
       interaction:{ mode:'index', intersect:false },
       plugins:{
         legend:{ display:false },
-        tooltip:{ backgroundColor:'#21262d', borderColor:'#30363d', borderWidth:1, titleColor:'#e6edf3', bodyColor:'#8b949e' },
+        tooltip:{ backgroundColor:tc('--chart-tooltip-bg'), borderColor:tc('--chart-tooltip-border'), borderWidth:1, titleColor:tc('--chart-tooltip-title'), bodyColor:tc('--chart-tooltip-body') },
         datalabels:{ display:false }
       },
       scales:{
-        x:{ type:'linear', min:0, max:100, grid:{color:'#30363d'},
-          ticks:{ color:'#8b949e', font:{size:11}, callback:v=>v+'%' },
-          title:{ display:true, text:xLabel, color:'#8b949e', font:{size:11} }
+        x:{ type:'linear', min:0, max:100, grid:{color:tc('--chart-grid')},
+          ticks:{ color:tc('--chart-text'), font:{size:11}, callback:v=>v+'%' },
+          title:{ display:true, text:xLabel, color:tc('--chart-text'), font:{size:11} }
         },
-        y:{ min:0, max:100, grid:{color:'#30363d'},
-          ticks:{ color:'#8b949e', font:{size:11}, callback:v=>v+'%' },
-          title:{ display:true, text:yLabel, color:'#8b949e', font:{size:11} }
+        y:{ min:0, max:100, grid:{color:tc('--chart-grid')},
+          ticks:{ color:tc('--chart-text'), font:{size:11}, callback:v=>v+'%' },
+          title:{ display:true, text:yLabel, color:tc('--chart-text'), font:{size:11} }
         }
       }
     }
@@ -1004,16 +1101,16 @@ function renderSpRevChart() {
       interaction:{ mode:'index', intersect:false },
       plugins:{
         legend:{ display:false },
-        tooltip:{ backgroundColor:'#21262d', borderColor:'#30363d', borderWidth:1, titleColor:'#e6edf3', bodyColor:'#8b949e',
+        tooltip:{ backgroundColor:tc('--chart-tooltip-bg'), borderColor:tc('--chart-tooltip-border'), borderWidth:1, titleColor:tc('--chart-tooltip-title'), bodyColor:tc('--chart-tooltip-body'),
           callbacks:{ label:ctx=>{ const raw=ctx.parsed.x; return ' '+ctx.dataset.label+': '+pfx+fmt(raw)+(mode==='newpct'?'%':''); } }
         },
         datalabels:{ display:false }
       },
       scales:{
-        x:{ grid:{color:'#30363d'}, ticks:{color:'#8b949e',font:{size:11},
+        x:{ grid:{color:tc('--chart-grid')}, ticks:{color:tc('--chart-text'),font:{size:11},
           callback: val=>(pfx+(val>=1e6?(val/1e6).toFixed(1)+'M':val>=1000?(val/1000).toFixed(0)+'K':val)+(mode==='newpct'?'%':''))
         }},
-        y:{ grid:{color:'#30363d'}, ticks:{color:'#8b949e',font:{size:11}} }
+        y:{ grid:{color:tc('--chart-grid')}, ticks:{color:tc('--chart-text'),font:{size:11}} }
       }
     }
   });
@@ -1032,21 +1129,322 @@ function renderSpCountries() {
       data:s.map(e=>e[1]),
       backgroundColor:C.slice(0,s.length),
       borderRadius:4,
-      datalabels:{ anchor:'end', align:'top', color:'#8b949e', font:{size:10}, formatter:val=>val }
+      datalabels:{ anchor:'end', align:'top', color:tc('--chart-text'), font:{size:10}, formatter:val=>val }
     }]},
     options:{
       responsive:true, maintainAspectRatio:false,
       plugins:{
         legend:{ display:false },
-        tooltip:{ backgroundColor:'#21262d', borderColor:'#30363d', borderWidth:1, titleColor:'#e6edf3', bodyColor:'#8b949e' },
+        tooltip:{ backgroundColor:tc('--chart-tooltip-bg'), borderColor:tc('--chart-tooltip-border'), borderWidth:1, titleColor:tc('--chart-tooltip-title'), bodyColor:tc('--chart-tooltip-body') },
         datalabels:{}  // enable per-dataset config
       },
       scales:{
-        x:{ grid:{color:'#30363d'}, ticks:{color:'#8b949e',font:{size:11}} },
-        y:{ grid:{color:'#30363d'}, ticks:{color:'#8b949e',font:{size:11}} }
+        x:{ grid:{color:tc('--chart-grid')}, ticks:{color:tc('--chart-text'),font:{size:11}} },
+        y:{ grid:{color:tc('--chart-grid')}, ticks:{color:tc('--chart-text'),font:{size:11}} }
       }
     }
   });
+}
+
+// ── Seasonality ──────────────────────────────────────────────────────────────
+function renderSeason() {
+  const moNames = LANG==='zh'
+    ? ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月']
+    : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const byMo = {};
+  F.forEach(r=>{
+    if(!r.month) return;
+    const mo = +r.month.split('-')[1];
+    if(!byMo[mo]) byMo[mo]={sum:0, years:new Set()};
+    byMo[mo].sum += r.usd;
+    byMo[mo].years.add(r.year);
+  });
+  const vals = Array.from({length:12},(_,i)=>{
+    const d = byMo[i+1];
+    return d && d.years.size>0 ? Math.round(d.sum/d.years.size) : 0;
+  });
+  const max = Math.max(...vals);
+  const bgColors = vals.map(v=>{ const ratio=v/max; return ratio>0.8?'rgba(63,185,80,0.7)':ratio>0.5?'rgba(88,166,255,0.7)':'rgba(139,148,158,0.5)'; });
+  dc('chartSeason');
+  const opts = darkOpts({yPfx:'$'});
+  opts.plugins.legend.display = false;
+  opts.plugins.datalabels = { anchor:'end', align:'top', color:tc('--chart-text'), font:{size:10}, formatter:val=>'$'+(val>=1000?(val/1000).toFixed(0)+'K':val) };
+  CI.chartSeason = new Chart(document.getElementById('chartSeason'),{
+    type:'bar',
+    data:{ labels:moNames, datasets:[{ label:LANG==='zh'?'月均营收':'Avg Revenue', data:vals, backgroundColor:bgColors, borderRadius:4 }] },
+    options:opts
+  });
+}
+
+// ── Day of Week ──────────────────────────────────────────────────────────────
+function renderDow() {
+  const dayNames = LANG==='zh'
+    ? ['周日','周一','周二','周三','周四','周五','周六']
+    : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dow = Array(7).fill(0);
+  F.forEach(r=>{
+    if(!r.date) return;
+    const d = new Date(r.date).getDay();
+    dow[d] += r.usd;
+  });
+  const bgColors = ['#8b949e','#58a6ff','#3fb950','#d2a8ff','#ffa657','#f78166','#8b949e'];
+  dc('chartDow');
+  const opts = darkOpts({yPfx:'$'});
+  opts.plugins.legend.display = false;
+  CI.chartDow = new Chart(document.getElementById('chartDow'),{
+    type:'bar',
+    data:{ labels:dayNames, datasets:[{ label:'USD', data:dow, backgroundColor:bgColors.map(c=>c+'99'), borderColor:bgColors, borderWidth:1, borderRadius:4, datalabels:{display:false} }] },
+    options:opts
+  });
+}
+
+// ── Big Orders ───────────────────────────────────────────────────────────────
+function renderBigOrders() {
+  const top20 = [...F].filter(r=>r.usd>0).sort((a,b)=>b.usd-a.usd).slice(0,20);
+  document.getElementById('bigOrdersBody').innerHTML = top20.map((r,i)=>`<tr>
+    <td style="color:var(--muted)">${i<3?['🥇','🥈','🥉'][i]:i+1}</td>
+    <td style="color:var(--muted)">${r.date}</td>
+    <td>${r.salesperson}</td>
+    <td>${r.country}</td>
+    <td style="color:var(--accent);font-weight:700">$${fmt(r.usd,2)}</td>
+    <td><span class="badge ${r.custType&&r.custType.includes('新')?'b-new':'b-old'}">${r.custType&&r.custType.includes('新')?t('badgeNew'):t('badgeReturn')}</span></td>
+    <td><span class="badge ${r.channel&&r.channel.includes('线上')?'b-on':'b-off'}">${r.channel&&r.channel.includes('线上')?t('badgeOnline'):t('badgeOffline')}</span></td>
+    <td style="color:var(--muted)">${r.store}</td>
+  </tr>`).join('');
+}
+
+// ── Salesperson Monthly Trend ─────────────────────────────────────────────────
+function renderSpTrend() {
+  const months = allMonths();
+  if(!months.length) { dc('chartSpTrend'); return; }
+  // get top SPs by total USD for readability
+  const spTot = {};
+  F.forEach(r=>{ if(r.salesperson) spTot[r.salesperson]=(spTot[r.salesperson]||0)+r.usd; });
+  const topSps = Object.entries(spTot).sort((a,b)=>b[1]-a[1]).slice(0,8).map(e=>e[0]);
+  // build monthly data per SP
+  const spMonthly = {};
+  F.forEach(r=>{
+    if(!r.salesperson || !r.month) return;
+    if(!topSps.includes(r.salesperson)) return;
+    if(!spMonthly[r.salesperson]) spMonthly[r.salesperson]={};
+    spMonthly[r.salesperson][r.month] = (spMonthly[r.salesperson][r.month]||0) + r.usd;
+  });
+  dc('chartSpTrend');
+  CI.chartSpTrend = new Chart(document.getElementById('chartSpTrend'),{
+    type:'line',
+    data:{
+      labels: months.map(monthLabel),
+      datasets: topSps.map((sp,i)=>({
+        label: sp,
+        data: months.map(m=>spMonthly[sp]?.[m]||0),
+        borderColor: C[i%C.length],
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: 2,
+        tension: 0.4,
+        datalabels:{ display:false }
+      }))
+    },
+    options: darkOpts({yPfx:'$', spanGaps:true})
+  });
+}
+
+// ── Salesperson Win Rate Trend ────────────────────────────────────────────────
+function renderWinRate() {
+  const months = allMonths();
+  if(!months.length) { dc('chartWinRate'); return; }
+  const spTot = {};
+  F.forEach(r=>{ if(r.salesperson) spTot[r.salesperson]=(spTot[r.salesperson]||0)+r.usd; });
+  const topSps = Object.entries(spTot).sort((a,b)=>b[1]-a[1]).slice(0,6).map(e=>e[0]);
+  // monthly new% per SP
+  const spM = {};
+  F.forEach(r=>{
+    if(!r.salesperson||!r.month||!topSps.includes(r.salesperson)) return;
+    const k = r.salesperson+'|'+r.month;
+    if(!spM[k]) spM[k]={total:0,newC:0};
+    spM[k].total++;
+    if(r.custType&&r.custType.includes('新')) spM[k].newC++;
+  });
+  dc('chartWinRate');
+  CI.chartWinRate = new Chart(document.getElementById('chartWinRate'),{
+    type:'line',
+    data:{
+      labels: months.map(monthLabel),
+      datasets: topSps.map((sp,i)=>({
+        label: sp,
+        data: months.map(m=>{
+          const d = spM[sp+'|'+m];
+          return d && d.total>=2 ? Math.round(d.newC/d.total*100) : null;
+        }),
+        borderColor: C[i%C.length],
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: 3,
+        tension: 0.4,
+        spanGaps: true,
+        datalabels:{ display:false }
+      }))
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, spanGaps:true,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{
+        legend:{ labels:{color:tc('--chart-text'),boxWidth:12,font:{size:12}} },
+        tooltip:{ backgroundColor:tc('--chart-tooltip-bg'), borderColor:tc('--chart-tooltip-border'), borderWidth:1, titleColor:tc('--chart-tooltip-title'), bodyColor:tc('--chart-tooltip-body'),
+          callbacks:{ label:ctx=>{ const raw=ctx.parsed.y; return raw!=null?' '+ctx.dataset.label+': '+raw+'%':null; } }
+        },
+        datalabels:{ display:false }
+      },
+      scales:{
+        x:{ grid:{color:tc('--chart-grid')}, ticks:{color:tc('--chart-text'),font:{size:11}} },
+        y:{ grid:{color:tc('--chart-grid')}, min:0, max:100, ticks:{color:tc('--chart-text'),font:{size:11}, callback:val=>val+'%'} }
+      }
+    }
+  });
+}
+
+// ── Country YoY Growth ───────────────────────────────────────────────────────
+let cnYoyPeriod = '2024-2025';
+function setCnYoyPeriod(period, el) {
+  cnYoyPeriod = period;
+  el.closest('.tab-bar').querySelectorAll('.tab').forEach(tab=>tab.classList.remove('active'));
+  el.classList.add('active');
+  renderCnYoy();
+}
+function renderCnYoy() {
+  const [y1,y2] = cnYoyPeriod.split('-').map(Number);
+  const map = {};
+  F.forEach(r=>{
+    if(!r.country || (r.year!==y1 && r.year!==y2)) return;
+    if(!map[r.country]) map[r.country]={prev:0,cur:0};
+    if(r.year===y1) map[r.country].prev += r.usd;
+    else map[r.country].cur += r.usd;
+  });
+  // only countries active in both years
+  const both = Object.entries(map)
+    .filter(([c,d])=>d.prev>500 && d.cur>500) // minimum threshold
+    .map(([c,d])=>({ c, prev:d.prev, cur:d.cur, pct:Math.round((d.cur-d.prev)/d.prev*100) }))
+    .sort((a,b)=>b.pct-a.pct);
+  const labels = both.map(e=>e.c);
+  const pcts   = both.map(e=>e.pct);
+  const colors = pcts.map(p=>p>=0?'rgba(63,185,80,0.7)':'rgba(247,129,102,0.7)');
+  dc('chartCnYoy');
+  CI.chartCnYoy = new Chart(document.getElementById('chartCnYoy'),{
+    type:'bar',
+    data:{ labels, datasets:[{
+      label: y1+'→'+y2+' Growth %',
+      data:pcts, backgroundColor:colors, borderRadius:3,
+      datalabels:{ anchor:ctx=>ctx.dataset.data[ctx.dataIndex]>=0?'end':'start',
+        align:ctx=>ctx.dataset.data[ctx.dataIndex]>=0?'top':'bottom',
+        color:tc('--chart-text'), font:{size:10}, formatter:val=>(val>=0?'+':'')+val+'%' }
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      plugins:{ legend:{display:false}, tooltip:{backgroundColor:tc('--chart-tooltip-bg'),borderColor:tc('--chart-tooltip-border'),borderWidth:1,titleColor:tc('--chart-tooltip-title'),bodyColor:tc('--chart-tooltip-body')}, datalabels:{} },
+      scales:{
+        x:{ grid:{color:tc('--chart-grid')}, ticks:{color:tc('--chart-text'),font:{size:11}, callback:val=>val+'%'},
+          title:{display:true,text:LANG==='zh'?'营收变化%':'Revenue Change %',color:tc('--chart-text'),font:{size:11}}
+        },
+        y:{ grid:{color:tc('--chart-grid')}, ticks:{color:tc('--chart-text'),font:{size:11}} }
+      }
+    }
+  });
+}
+
+// ── New Markets Discovery ────────────────────────────────────────────────────
+function renderNewMkt() {
+  // Use ALL data to track first appearance, regardless of filters
+  const firstYear = {};
+  ALL.forEach(r=>{ if(r.country && r.year) { if(!firstYear[r.country] || r.year<firstYear[r.country]) firstYear[r.country]=r.year; } });
+  const byYear = {};
+  Object.entries(firstYear).forEach(([c,y])=>{ byYear[y]=(byYear[y]||0)+1; });
+  const years = Object.keys(byYear).sort();
+  dc('chartNewMkt');
+  const opts = darkOpts({});
+  opts.plugins.legend.display = false;
+  opts.plugins.datalabels = { anchor:'end', align:'top', color:tc('--chart-text'), font:{size:12,weight:'bold'}, formatter:val=>val };
+  CI.chartNewMkt = new Chart(document.getElementById('chartNewMkt'),{
+    type:'bar',
+    data:{ labels:years, datasets:[{
+      label: LANG==='zh'?'新增国家':'New Countries',
+      data: years.map(y=>byYear[y]),
+      backgroundColor:['#58a6ff99','#3fb95099','#ffa65799'],
+      borderColor:['#58a6ff','#3fb950','#ffa657'],
+      borderWidth:1, borderRadius:6
+    }]},
+    options:opts
+  });
+}
+
+// ── Market Concentration ──────────────────────────────────────────────────────
+function renderMktConc() {
+  const map = {};
+  F.forEach(r=>{ if(r.country && r.usd>0) map[r.country]=(map[r.country]||0)+r.usd; });
+  const sorted = Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  const total = sorted.reduce((s,e)=>s+e[1],0);
+  if(!total) { dc('chartMktConc'); return; }
+  // cumulative %
+  const tiers = [1,3,5,10,20];
+  const cumPcts = tiers.map(n=>{
+    const topN = sorted.slice(0,n).reduce((s,e)=>s+e[1],0);
+    return +(topN/total*100).toFixed(1);
+  });
+  const labels = tiers.map(n=> (LANG==='zh'?'前':'Top ')+n+(LANG==='zh'?'国家':' Countries'));
+  dc('chartMktConc');
+  CI.chartMktConc = new Chart(document.getElementById('chartMktConc'),{
+    type:'bar',
+    data:{ labels, datasets:[{
+      label: LANG==='zh'?'营收占比':'Revenue Share',
+      data:cumPcts,
+      backgroundColor:['#f7816699','#ffa65799','#e3b34199','#58a6ff99','#3fb95099'],
+      borderColor:['#f78166','#ffa657','#e3b341','#58a6ff','#3fb950'],
+      borderWidth:1, borderRadius:6,
+      datalabels:{ anchor:'end', align:'top', color:tc('--chart-text'), font:{size:11,weight:'bold'}, formatter:val=>val+'%' }
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{backgroundColor:tc('--chart-tooltip-bg'),borderColor:tc('--chart-tooltip-border'),borderWidth:1,titleColor:tc('--chart-tooltip-title'),bodyColor:tc('--chart-tooltip-body')}, datalabels:{} },
+      scales:{
+        x:{ grid:{color:tc('--chart-grid')}, ticks:{color:tc('--chart-text'),font:{size:11}} },
+        y:{ grid:{color:tc('--chart-grid')}, min:0, max:100, ticks:{color:tc('--chart-text'),font:{size:11}, callback:val=>val+'%'} }
+      }
+    }
+  });
+}
+
+// ── New Markets Detail Table ──────────────────────────────────────────────────
+function renderNewMktTable() {
+  const zh = LANG==='zh';
+  const firstYear = {};
+  ALL.forEach(r=>{ if(r.country && r.year) { if(!firstYear[r.country] || r.year<firstYear[r.country]) firstYear[r.country]=r.year; } });
+  // gather stats per new country (only 2025 and 2026 entries)
+  const newCountries = [];
+  [2025,2026].forEach(yr=>{
+    const countries = Object.entries(firstYear).filter(([c,y])=>y===yr).map(e=>e[0]);
+    countries.forEach(c=>{
+      const orders = F.filter(r=>r.country===c);
+      const usd = orders.reduce((s,r)=>s+r.usd,0);
+      const topSp = {};
+      orders.forEach(r=>{ if(r.salesperson) topSp[r.salesperson]=(topSp[r.salesperson]||0)+1; });
+      const sp = Object.entries(topSp).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
+      newCountries.push({ year:yr, country:c, orders:orders.length, usd, sp });
+    });
+  });
+  newCountries.sort((a,b)=>b.usd-a.usd);
+  document.getElementById('newMktTableHead').innerHTML = `<tr>
+    <th>${zh?'首年':'First Year'}</th>
+    <th>${zh?'国家':'Country'}</th>
+    <th>${zh?'订单数':'Orders'}</th>
+    <th>${zh?'美元营收':'USD Revenue'}</th>
+    <th>${zh?'主要业务员':'Top Salesperson'}</th>
+  </tr>`;
+  document.getElementById('newMktTableBody').innerHTML = newCountries.map(d=>`<tr>
+    <td><span class="badge b-neutral">${d.year}</span></td>
+    <td><b>${d.country}</b></td>
+    <td>${d.orders}</td>
+    <td style="color:var(--accent)">$${fmt(d.usd)}</td>
+    <td style="color:var(--muted)">${d.sp}</td>
+  </tr>`).join('');
 }
 
 // ── Quarterly Helpers ─────────────────────────────────────────────────────────
@@ -1167,18 +1565,18 @@ function renderQoQ() {
       label: LANG==='zh'?'环比增长%':'QoQ Growth %',
       data:vals, backgroundColor:colors, borderRadius:4,
       datalabels:{ anchor:'end', align: ctx=>ctx.dataset.data[ctx.dataIndex]>=0?'top':'bottom',
-        color:'#8b949e', font:{size:11}, formatter:val=>val+'%' }
+        color:tc('--chart-text'), font:{size:11}, formatter:val=>val+'%' }
     }]},
     options:{
       responsive:true, maintainAspectRatio:false,
       plugins:{
         legend:{ display:false },
-        tooltip:{ backgroundColor:'#21262d', borderColor:'#30363d', borderWidth:1, titleColor:'#e6edf3', bodyColor:'#8b949e' },
+        tooltip:{ backgroundColor:tc('--chart-tooltip-bg'), borderColor:tc('--chart-tooltip-border'), borderWidth:1, titleColor:tc('--chart-tooltip-title'), bodyColor:tc('--chart-tooltip-body') },
         datalabels:{}
       },
       scales:{
-        x:{ grid:{color:'#30363d'}, ticks:{color:'#8b949e',font:{size:11}} },
-        y:{ grid:{color:'#30363d'}, ticks:{color:'#8b949e',font:{size:11}, callback:val=>val+'%' } }
+        x:{ grid:{color:tc('--chart-grid')}, ticks:{color:tc('--chart-text'),font:{size:11}} },
+        y:{ grid:{color:tc('--chart-grid')}, ticks:{color:tc('--chart-text'),font:{size:11}, callback:val=>val+'%' } }
       }
     }
   });
@@ -1327,7 +1725,8 @@ function renderHeatmap() {
     const ratio=val/maxVal;
     const r=Math.round(88+ratio*(247-88)), g=Math.round(166+ratio*(129-166)), b=Math.round(255+ratio*(102-255));
     const bright = ratio>0.5;
-    return `background:rgba(${r},${g},${b},${0.2+ratio*0.75});color:${bright?'#fff':'#8b949e'}`;
+    const isLight = getTheme()==='light';
+    return `background:rgba(${r},${g},${b},${isLight?0.15+ratio*0.55:0.2+ratio*0.75});color:${bright?(isLight?'#000':'#fff'):tc('--chart-text')}`;
   }
   const thead = `<tr><th>Salesperson</th>${months.map(m=>`<th>${monthLabel(m)}</th>`).join('')}</tr>`;
   const tbody = salespeople.map(sp=>
@@ -1436,7 +1835,7 @@ function renderOrderTable() {
 let LANG = 'en';
 const T = {
   en: {
-    title: 'LED Mirror B2B · Sales Intelligence',
+    title: '外贸部销售数据看板',
     refresh: '⟳ Refresh',
     langBtn: '中文',
     nav: ['Overview','Growth & Trends','Quarterly','Team Performance','Market Intelligence','Orders'],
@@ -1463,6 +1862,17 @@ const T = {
     paretoTitle:'Revenue Concentration (Pareto)', paretoSub:'Top orders → cumulative USD share',
     sourceTitle:'Lead Source / Operator', sourceSub:'Orders by lead origin',
     avgTitle:'Monthly Avg Order Value (USD)', avgSub:'Trend of average USD per order',
+    seasonTitle:'Seasonality Pattern', seasonSub:'Average USD revenue by calendar month across all years',
+    dowTitle:'Revenue by Day of Week', dowSub:'Total USD by weekday',
+    bigOrdersTitle:'Top 20 Largest Orders', bigOrdersSub:'Sorted by USD amount',
+    // team deep
+    spTrendTitle:'Salesperson Monthly Performance', spTrendSub:'USD revenue trend per salesperson over time',
+    winRateTitle:'New Customer Acquisition Rate', winRateSub:'Monthly new customer % per salesperson',
+    // market deep
+    cnYoyTitle:'Country Year-over-Year Growth', cnYoySub:'USD revenue change — countries active in both years',
+    newMktTitle:'New Markets Discovered', newMktSub:'Countries first reached each year',
+    mktConcTitle:'Market Concentration', mktConcSub:'Revenue share of top N countries',
+    newMktTableTitle:'New Markets Detail',
     // quarterly
     qKpiSec:'Quarterly Snapshot',
     qRevTitle:'Quarterly Revenue', qRevSub:'USD & RMB per quarter',
@@ -1500,7 +1910,7 @@ const T = {
     avgOrder:'Avg USD Order',
   },
   zh: {
-    title: 'LED镜B2B · 销售数据看板',
+    title: '外贸部销售数据看板',
     refresh: '⟳ 刷新',
     langBtn: 'English',
     nav: ['总览','增长趋势','季度分析','团队业绩','市场分析','订单明细'],
@@ -1526,6 +1936,15 @@ const T = {
     paretoTitle:'营收集中度（帕累托）', paretoSub:'头部订单 → 累计美元占比',
     sourceTitle:'客源 / 运营分析', sourceSub:'按来源统计订单数',
     avgTitle:'月均客单价（美元）', avgSub:'月度平均订单金额趋势',
+    seasonTitle:'季节性规律', seasonSub:'各月平均美元营收（跨年平均）',
+    dowTitle:'星期营收分布', dowSub:'按星期汇总美元营收',
+    bigOrdersTitle:'前20大订单', bigOrdersSub:'按美元金额排序',
+    spTrendTitle:'业务员月度趋势', spTrendSub:'各业务员月度美元营收变化',
+    winRateTitle:'新客获取率', winRateSub:'各业务员月度新客占比',
+    cnYoyTitle:'国家同比增长', cnYoySub:'美元营收变化 — 两年均有数据的国家',
+    newMktTitle:'新市场开拓', newMktSub:'每年首次触达的国家',
+    mktConcTitle:'市场集中度', mktConcSub:'前N个国家的营收占比',
+    newMktTableTitle:'新市场明细',
     qKpiSec:'季度快照',
     qRevTitle:'季度营收', qRevSub:'每季度美元 & 人民币',
     qGrowthTitle:'季度环比增长', qGrowthSub:'美元营收环比变化',
@@ -1561,6 +1980,24 @@ const T = {
 };
 
 function t(key) { return T[LANG][key] || T.en[key] || key; }
+
+// ── Theme toggle ─────────────────────────────────────────────────────────────
+function getTheme() { return document.documentElement.getAttribute('data-theme') || 'dark'; }
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('themeBtn').textContent = theme==='dark' ? '🌙' : '☀️';
+  try { localStorage.setItem('led-theme', theme); } catch(e){}
+}
+function toggleTheme() {
+  setTheme(getTheme()==='dark' ? 'light' : 'dark');
+  renderAll(); // re-render charts with new colors
+}
+// init theme from localStorage
+(function(){
+  let saved = 'dark';
+  try { saved = localStorage.getItem('led-theme') || 'dark'; } catch(e){}
+  setTheme(saved);
+})();
 
 function toggleLang() {
   LANG = LANG === 'en' ? 'zh' : 'en';
@@ -1606,6 +2043,138 @@ function applyLangToDOM() {
   document.querySelectorAll('[data-tkey]').forEach(el=>{
     el.textContent = l[el.dataset.tkey] || T.en[el.dataset.tkey] || el.textContent;
   });
+}
+
+// ── Download buttons ──────────────────────────────────────────────────────────
+const DL_SVG = '<svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+
+function injectDownloadButtons() {
+  // Inject into card headers (charts)
+  document.querySelectorAll('.card-hd').forEach(hd => {
+    if(hd.querySelector('.dl-btn')) return;
+    const card = hd.closest('.card');
+    if(!card) return;
+    const canvas = card.querySelector('canvas');
+    const progBars = card.querySelector('.prog-row');
+    const hmTable = card.querySelector('.hm');
+    if(!canvas && !progBars && !hmTable) return;
+    const btn = document.createElement('button');
+    btn.className = 'dl-btn';
+    btn.title = 'Download';
+    btn.innerHTML = DL_SVG;
+    btn.onclick = () => downloadCard(card);
+    hd.appendChild(btn);
+  });
+  // Inject into table headers
+  document.querySelectorAll('.tw-hd').forEach(hd => {
+    if(hd.querySelector('.dl-btn')) return;
+    const tw = hd.closest('.tw');
+    if(!tw) return;
+    const table = tw.querySelector('table');
+    if(!table) return;
+    const btn = document.createElement('button');
+    btn.className = 'dl-btn';
+    btn.title = 'Download CSV';
+    btn.innerHTML = DL_SVG;
+    btn.onclick = () => downloadTableCSV(tw);
+    hd.appendChild(btn);
+  });
+}
+
+function downloadCard(card) {
+  const canvas = card.querySelector('canvas');
+  if(canvas) {
+    const title = card.querySelector('.card-title')?.textContent || '';
+    const sub   = card.querySelector('.card-sub')?.textContent || '';
+    const w = canvas.width;
+    const padding = 20;
+    const titleH = title ? 28 : 0;
+    const subH   = sub ? 18 : 0;
+    const headerH = padding + titleH + subH + (sub ? 4 : 0) + 10;
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = w;
+    tempCanvas.height = canvas.height + headerH;
+    const ctx = tempCanvas.getContext('2d');
+    const bg = tc('--chart-canvas-bg');
+    const textColor = tc('--text');
+    const mutedColor = tc('--muted');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+    // draw title
+    if(title) {
+      ctx.fillStyle = textColor;
+      ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.fillText(title, padding, padding + 20);
+    }
+    // draw subtitle
+    if(sub) {
+      ctx.fillStyle = mutedColor;
+      ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.fillText(sub, padding, padding + titleH + 16);
+    }
+    // draw chart below header
+    ctx.drawImage(canvas, 0, headerH);
+    const link = document.createElement('a');
+    link.download = (title||'chart').replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_') + '.png';
+    link.href = tempCanvas.toDataURL('image/png');
+    link.click();
+    return;
+  }
+  // For non-canvas cards (progress bars, heatmaps) — use html2canvas-like approach via DOM screenshot
+  // Fallback: export as image by drawing the card
+  exportDomAsImage(card);
+}
+
+function exportDomAsImage(el) {
+  // Use canvas-based approach: render the element to an offscreen canvas
+  // For simplicity, we'll export the data as CSV instead
+  const title = el.querySelector('.card-title')?.textContent || 'data';
+  // Try to extract progress bar data
+  const rows = el.querySelectorAll('.prog-row');
+  if(rows.length) {
+    let csv = 'Name,Value\n';
+    rows.forEach(row => {
+      const lbl = row.querySelector('.prog-lbl')?.textContent?.trim() || '';
+      const val = row.querySelector('.prog-val')?.textContent?.trim() || '';
+      csv += '"' + lbl + '","' + val + '"\n';
+    });
+    downloadCSVString(csv, title);
+    return;
+  }
+  // Heatmap table
+  const hm = el.querySelector('.hm');
+  if(hm) {
+    downloadTableEl(hm, title);
+    return;
+  }
+}
+
+function downloadTableCSV(tw) {
+  const table = tw.querySelector('table');
+  if(!table) return;
+  const title = tw.querySelector('.tw-hd-title')?.textContent || 'table';
+  downloadTableEl(table, title);
+}
+
+function downloadTableEl(table, title) {
+  const rows = table.querySelectorAll('tr');
+  let csv = '';
+  rows.forEach(row => {
+    const cells = row.querySelectorAll('th, td');
+    const line = [...cells].map(c => '"' + c.textContent.replace(/"/g, '""').trim() + '"').join(',');
+    csv += line + '\n';
+  });
+  downloadCSVString(csv, title);
+}
+
+function downloadCSVString(csv, title) {
+  const BOM = '\uFEFF'; // for Excel Chinese support
+  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.download = title.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_') + '.csv';
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  URL.revokeObjectURL(link.href);
 }
 
 boot();
